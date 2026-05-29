@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Workout Tracker</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:#0d0d1a; color:#fff; font-family: Arial, sans-serif; min-height:100vh; }
+  #splash { position:fixed; inset:0; background:#08080f; display:flex; flex-direction:column; align-items:center; justify-content:center; z-index:999; transition:opacity 0.5s; }
+  #splash h1 { font-size:48px; font-weight:900; letter-spacing:10px; color:#fff; }
+  #splash h2 { font-size:48px; font-weight:900; letter-spacing:14px; color:#e63946; text-shadow:0 0 30px rgba(230,57,70,0.6); margin-top:4px; }
+  #splash .line { width:100px; height:2px; background:linear-gradient(90deg,transparent,#e63946,transparent); margin:16px 0 10px; }
+  #splash p { font-size:11px; letter-spacing:6px; color:#555; }
+  .glow { width:300px; height:300px; border-radius:50%; background:radial-gradient(circle,rgba(230,57,70,0.15) 0%,transparent 70%); position:absolute; }
+
+  header { padding:14px 18px; background:#111120; border-bottom:1px solid rgba(230,57,70,0.25); display:flex; align-items:center; justify-content:center; gap:10px; position:sticky; top:0; z-index:50; }
+  header span { font-size:17px; font-weight:900; letter-spacing:4px; }
+
+  .content { padding:18px 14px 90px; }
+  .label { font-size:10px; letter-spacing:5px; color:#444; margin-bottom:14px; }
+
+  .grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .muscle-card { background:linear-gradient(135deg,#141428,#1c1c35); border-radius:14px; padding:18px 14px; display:flex; flex-direction:column; gap:8px; cursor:pointer; position:relative; overflow:hidden; text-align:left; border:none; }
+  .muscle-card .glow-dot { position:absolute; top:-20px; right:-20px; width:80px; height:80px; border-radius:50%; pointer-events:none; }
+  .muscle-card .name { font-size:17px; font-weight:900; letter-spacing:2px; color:#fff; }
+  .muscle-card .count { font-size:10px; color:#555; }
+
+  .back-btn { background:none; border:1px solid #2a2a3a; color:#888; padding:6px 14px; border-radius:6px; font-size:11px; letter-spacing:2px; cursor:pointer; margin-bottom:16px; font-weight:700; }
+  .accent-line { height:2px; margin-bottom:18px; }
+
+  .ex-card { background:#141428; border-radius:12px; padding:16px; display:flex; flex-direction:column; gap:10px; margin-bottom:12px; }
+  .ex-num { font-size:10px; letter-spacing:3px; }
+  .ex-name { font-size:14px; font-weight:700; letter-spacing:1px; color:#eee; line-height:1.3; }
+  .input-row { display:flex; align-items:center; gap:8px; }
+  .kg-block { display:flex; flex-direction:column; align-items:center; gap:3px; }
+  .field-label { font-size:9px; letter-spacing:2px; color:#555; }
+  .kg-input { width:62px; background:#0a0a18; border-radius:6px; color:#fff; padding:7px 4px; font-size:18px; font-weight:900; text-align:center; outline:none; border:none; }
+  .divider { width:1px; height:38px; flex-shrink:0; }
+  .note-block { display:flex; flex-direction:column; gap:3px; flex:1; }
+  .note-input { width:100%; background:#0a0a18; border-radius:6px; color:#bbb; padding:7px 10px; font-size:11px; outline:none; border:none; }
+  .save-btn { border-radius:6px; width:32px; height:32px; cursor:pointer; font-size:15px; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-weight:900; border:none; }
+
+  .day-card { background:#141428; border:1px solid #1e1e32; border-radius:12px; padding:14px 16px; display:flex; gap:14px; align-items:flex-start; margin-bottom:10px; }
+  .day-label { font-size:17px; font-weight:900; letter-spacing:3px; color:#e63946; min-width:38px; padding-top:2px; }
+  .day-content { flex:1; font-size:12px; color:#2a2a3a; line-height:1.6; cursor:pointer; min-height:24px; white-space:pre-wrap; padding-top:2px; }
+  .day-content.filled { color:#ccc; }
+  .day-textarea { flex:1; background:#0a0a18; border:1px solid rgba(230,57,70,0.3); border-radius:8px; color:#fff; padding:8px 10px; font-size:12px; outline:none; min-height:70px; resize:vertical; line-height:1.6; }
+
+  .bottom-nav { position:fixed; bottom:0; left:0; right:0; display:flex; background:rgba(8,8,16,0.97); border-top:1px solid rgba(230,57,70,0.2); z-index:50; }
+  .nav-btn { flex:1; padding:10px 0; display:flex; flex-direction:column; align-items:center; gap:4px; background:none; border:none; border-top:2px solid transparent; cursor:pointer; color:#3a3a55; }
+  .nav-btn.active { background:rgba(230,57,70,0.07); border-top:2px solid #e63946; color:#e63946; }
+  .nav-btn span { font-size:8px; letter-spacing:2px; font-weight:900; }
+
+  .toast { position:fixed; bottom:76px; left:50%; transform:translateX(-50%); background:rgba(230,57,70,0.92); color:#fff; padding:9px 22px; border-radius:20px; font-size:12px; letter-spacing:2px; z-index:999; font-weight:900; white-space:nowrap; display:none; }
+  .hidden { display:none; }
+</style>
+</head>
+<body>
+
+<!-- Splash -->
+<div id="splash">
+  <div class="glow"></div>
+  <svg width="90" height="90" viewBox="0 0 72 72" fill="none" style="margin-bottom:20px;filter:drop-shadow(0 0 24px rgba(230,57,70,0.7))">
+    <circle cx="36" cy="36" r="34" stroke="#e63946" stroke-width="2" stroke-dasharray="6 3"/>
+    <circle cx="36" cy="36" r="23" fill="#14141f" stroke="#e63946" stroke-width="1.5"/>
+    <rect x="20" y="33" width="32" height="6" rx="3" fill="#e63946"/>
+    <rect x="14" y="28" width="8" height="16" rx="3" fill="#e63946"/>
+    <rect x="50" y="28" width="8" height="16" rx="3" fill="#e63946"/>
+    <rect x="11" y="31" width="5" height="10" rx="2.5" fill="#c1121f"/>
+    <rect x="56" y="31" width="5" height="10" rx="2.5" fill="#c1121f"/>
+  </svg>
+  <h1>WORKOUT</h1>
+  <h2>TRACKER</h2>
+  <div class="line"></div>
+  <p>FORGE YOUR STRENGTH</p>
+</div>
+
+<!-- Header -->
+<header>
+  <svg width="22" height="22" viewBox="0 0 32 32" fill="none">
+    <rect x="4" y="13" width="24" height="6" rx="2" fill="#e63946"/>
+    <rect x="2" y="10" width="5" height="12" rx="2" fill="#e63946"/>
+    <rect x="25" y="10" width="5" height="12" rx="2" fill="#e63946"/>
+    <rect x="1" y="12" width="3" height="8" rx="1.5" fill="#c1121f"/>
+    <rect x="28" y="12" width="3" height="8" rx="1.5" fill="#c1121f"/>
+  </svg>
+  <span id="header-title">WORKOUT TRACKER</span>
+</header>
+
+<!-- Home -->
+<div id="home-screen" class="content">
+  <div class="label">MUSCLE GROUPS</div>
+  <div class="grid" id="muscle-grid"></div>
+</div>
+
+<!-- Exercise Detail -->
+<div id="exercise-screen" class="content hidden">
+  <button class="back-btn" onclick="goHome()">← BACK</button>
+  <div class="accent-line" id="accent-line"></div>
+  <div id="exercise-list"></div>
+</div>
+
+<!-- Weekly Plan -->
+<div id="plan-screen" class="content hidden">
+  <div class="label">WEEKLY SPLIT</div>
+  <div id="plan-list"></div>
+</div>
+
+<!-- Bottom Nav -->
+<div class="bottom-nav" id="bottom-nav">
+  <button class="nav-btn active" id="nav-home" onclick="switchTab('home')">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1H4a1 1 0 01-1-1V9.5z"/>
+      <path d="M9 21V12h6v9"/>
+    </svg>
+    <span>HOME</span>
+  </button>
+  <button class="nav-btn" id="nav-plan" onclick="switchTab('plan')">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="3" y="4" width="18" height="18" rx="2"/>
+      <line x1="16" y1="2" x2="16" y2="6"/>
+      <line x1="8" y1="2" x2="8" y2="6"/>
+      <line x1="3" y1="10" x2="21" y2="10"/>
+    </svg>
+    <span>WEEKLY PLAN</span>
+  </button>
+</div>
+
+<div class="toast" id="toast">Saved!</div>
+
+<script>
+const MUSCLES = {
+  Chest:     { color:"#e63946", exercises:["Flat Bench Chest Press","Inclined Chest Press","Pec Dec Fly","Cable Fly for Lower Chest"] },
+  Back:      { color:"#f4a261", exercises:["Lat Cable Pull","Seated Row Close Grip","Wide Grip Machine Row","Shrugs"] },
+  Triceps:   { color:"#2ec4b6", exercises:["Cable Rope Push Down","Cable Rope Over Head","Single Hand Cable D-Grip Push Down"] },
+  Biceps:    { color:"#e76f51", exercises:["Preacher Curl","Barbell Curl","Inclined Dumbbell Curl"] },
+  Shoulders: { color:"#a8dadc", exercises:["Shoulder Press Dumbbell","Shoulder Press Barbell","Cable Lateral Raises","Reverse Pec Dec"] },
+  Forearms:  { color:"#c77dff", exercises:["Cable Straight Bar Pronated Grip Wrist Curl (Front)","Cable Straight Bar Supinated Grip Wrist Curl (Back)","Hammer Curl Preacher","Dead Hand"] },
+  Legs:      { color:"#06d6a0", exercises:["Squat","Leg Press (Wide Leg Position)","Lunges","Single Leg Curl","Calf"] },
+  Abs:       { color:"#ffd60a", exercises:["Crunches","Leg Raises","Plank","Russian Twists"] },
+};
+const DAYS = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+
+// Load saved data
+let weights = JSON.parse(localStorage.getItem("wt_weights")||"{}");
+let notes   = JSON.parse(localStorage.getItem("wt_notes")||"{}");
+let plan    = JSON.parse(localStorage.getItem("wt_plan")||"{}");
+
+// Splash
+setTimeout(() => {
+  document.getElementById("splash").style.opacity = "0";
+  setTimeout(() => document.getElementById("splash").style.display = "none", 500);
+}, 2500);
+
+// Build muscle grid
+const grid = document.getElementById("muscle-grid");
+Object.entries(MUSCLES).forEach(([name, data]) => {
+  const btn = document.createElement("button");
+  btn.className = "muscle-card";
+  btn.style.border = `1px solid ${data.color}30`;
+  btn.style.boxShadow = `0 4px 18px ${data.color}12`;
+  btn.innerHTML = `
+    <div class="glow-dot" style="background:radial-gradient(circle,${data.color}20 0%,transparent 70%)"></div>
+    <div class="name">${name.toUpperCase()}</div>
+    <div class="count">${data.exercises.length} EXERCISES</div>
+  `;
+  btn.onclick = () => openMuscle(name);
+  grid.appendChild(btn);
+});
+
+// Build plan
+const planList = document.getElementById("plan-list");
+DAYS.forEach(day => {
+  const card = document.createElement("div");
+  card.className = "day-card";
+  card.id = `day-${day}`;
+  card.innerHTML = `
+    <div class="day-label">${day.toUpperCase()}</div>
+    <div class="day-content ${plan[day]?'filled':''}" id="day-content-${day}" onclick="editDay('${day}')">${plan[day]||"REST  ·  TAP TO EDIT"}</div>
+  `;
+  planList.appendChild(card);
+});
+
+function editDay(day) {
+  const card = document.getElementById(`day-${day}`);
+  const content = document.getElementById(`day-content-${day}`);
+  const ta = document.createElement("textarea");
+  ta.className = "day-textarea";
+  ta.value = plan[day]||"";
+  ta.placeholder = `Enter your ${day} workout split...`;
+  ta.onblur = () => {
+    plan[day] = ta.value;
+    localStorage.setItem("wt_plan", JSON.stringify(plan));
+    card.removeChild(ta);
+    content.textContent = plan[day]||"REST  ·  TAP TO EDIT";
+    content.className = `day-content ${plan[day]?'filled':''}`;
+    content.style.display = "";
+  };
+  content.style.display = "none";
+  card.appendChild(ta);
+  ta.focus();
+}
+
+function openMuscle(name) {
+  const data = MUSCLES[name];
+  document.getElementById("header-title").textContent = name.toUpperCase();
+  document.getElementById("accent-line").style.background = `linear-gradient(90deg,${data.color},transparent)`;
+  const list = document.getElementById("exercise-list");
+  list.innerHTML = "";
+  data.exercises.forEach((ex, i) => {
+    const k = `${name}|${ex}`;
+    const card = document.createElement("div");
+    card.className = "ex-card";
+    card.style.border = `1px solid ${data.color}20`;
+    card.innerHTML = `
+      <div class="ex-num" style="color:${data.color}">${String(i+1).padStart(2,"0")}</div>
+      <div class="ex-name">${ex}</div>
+      <div class="input-row">
+        <div class="kg-block">
+          <span class="field-label">KG</span>
+          <input class="kg-input" style="border:1px solid ${data.color}44" type="number" min="0" value="${weights[k]||""}" placeholder="0" oninput="saveWeight('${k}',this.value)"/>
+        </div>
+        <div class="divider" style="background:${data.color}25"></div>
+        <div class="note-block">
+          <span class="field-label">SESSION NOTE</span>
+          <input class="note-input" style="border:1px solid ${data.color}28" type="text" value="${notes[k]||""}" placeholder="e.g. failed at rep 6..." oninput="saveNote('${k}',this.value)"/>
+        </div>
+        <button class="save-btn" style="background:${data.color}18;color:${data.color};border:1px solid ${data.color}50" onclick="showToast()">✓</button>
+      </div>
+    `;
+    list.appendChild(card);
+  });
+  document.getElementById("home-screen").classList.add("hidden");
+  document.getElementById("plan-screen").classList.add("hidden");
+  document.getElementById("exercise-screen").classList.remove("hidden");
+  document.getElementById("bottom-nav").classList.add("hidden");
+}
+
+function goHome() {
+  document.getElementById("header-title").textContent = "WORKOUT TRACKER";
+  document.getElementById("exercise-screen").classList.add("hidden");
+  document.getElementById("home-screen").classList.remove("hidden");
+  document.getElementById("bottom-nav").classList.remove("hidden");
+}
+
+function switchTab(tab) {
+  document.getElementById("home-screen").classList.add("hidden");
+  document.getElementById("plan-screen").classList.add("hidden");
+  document.getElementById("nav-home").classList.remove("active");
+  document.getElementById("nav-plan").classList.remove("active");
+  if(tab==="home") {
+    document.getElementById("home-screen").classList.remove("hidden");
+    document.getElementById("nav-home").classList.add("active");
+  } else {
+    document.getElementById("plan-screen").classList.remove("hidden");
+    document.getElementById("nav-plan").classList.add("active");
+  }
+}
+
+function saveWeight(k,v) { weights[k]=v; localStorage.setItem("wt_weights",JSON.stringify(weights)); }
+function saveNote(k,v)   { notes[k]=v;   localStorage.setItem("wt_notes",  JSON.stringify(notes));   }
+
+function showToast() {
+  const t = document.getElementById("toast");
+  t.style.display = "block";
+  setTimeout(() => t.style.display="none", 1800);
+}
+</script>
+</body>
+</html>
